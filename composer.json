@@ -1,5 +1,5 @@
 {
-    "name": "shippit/magento2",
+    "name": "shippit/shipping",
     "description": "Shippit Integration Module",
     "require": {
         "magento/module-config": "100.0.*",

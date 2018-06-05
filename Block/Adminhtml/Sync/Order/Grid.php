@@ -9,7 +9,7 @@
  * http://www.shippit.com/terms
  *
  * @category   Shippit
- * @copyright  Copyright (c) 2016 by Shippit Pty Ltd (http://www.shippit.com)
+ * @copyright  Copyright (c) by Shippit Pty Ltd (http://www.shippit.com)
  * @author     Matthew Muscat <matthew@mamis.com.au>
  * @license    http://www.shippit.com/terms
  */
@@ -36,7 +36,7 @@ class Grid extends \Magento\Backend\Block\Widget\Grid\Extended
     protected $syncOrderStatus;
 
     /**
-     * @var \Shippit\Shipping\Model\Config\Source\Shippit\Methods
+     * @var \Shippit\Shipping\Model\Config\Source\Shippit\Shipping\Methods
      */
     protected $shippitMethods;
 
@@ -52,7 +52,7 @@ class Grid extends \Magento\Backend\Block\Widget\Grid\Extended
         \Magento\Sales\Model\Order\Config $orderConfig,
         \Shippit\Shipping\Model\ResourceModel\Sync\Order\Collection $syncOrderCollection,
         \Shippit\Shipping\Model\Config\Source\Shippit\Sync\Order\Status $syncOrderStatus,
-        \Shippit\Shipping\Model\Config\Source\Shippit\Methods $shippitMethods,
+        \Shippit\Shipping\Model\Config\Source\Shippit\Shipping\Methods $shippitMethods,
         array $data = []
     ) {
         parent::__construct($context, $backendHelper, $data);
@@ -112,6 +112,10 @@ class Grid extends \Magento\Backend\Block\Widget\Grid\Extended
             ->addFilterToMap(
                 'sync_status',
                 'main_table.status'
+            )
+            ->addFilterToMap(
+                'shipping_method',
+                'main_table.shipping_method'
             )
 
             ->addFilterToMap(
@@ -216,8 +220,7 @@ class Grid extends \Magento\Backend\Block\Widget\Grid\Extended
                 'header' => __('Sync Status'),
                 'index' => 'sync_status',
                 'type' => 'options',
-                'options' => $this->syncOrderStatus->toArray(),
-                'frame_callback' => [$this, 'decorateStatus'],
+                'options' => $this->syncOrderStatus->toArray()
             ]
         );
 

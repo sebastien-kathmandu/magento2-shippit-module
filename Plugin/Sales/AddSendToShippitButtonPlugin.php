@@ -9,31 +9,31 @@
  * http://www.shippit.com/terms
  *
  * @category   Shippit
- * @copyright  Copyright (c) 2016 by Shippit Pty Ltd (http://www.shippit.com)
+ * @copyright  Copyright (c) by Shippit Pty Ltd (http://www.shippit.com)
  * @author     Matthew Muscat <matthew@mamis.com.au>
  * @license    http://www.shippit.com/terms
  */
 
-namespace Shippit\Shipping\Plugin\Widget;
+namespace Shippit\Shipping\Plugin\Sales;
 
-class Context
+class AddSendToShippitButtonPlugin
 {
-    protected $_context;
-    protected $_url;
+    protected $context;
+    protected $url;
 
     public function __construct(
         \Magento\Framework\App\Action\Context $context,
         \Magento\Backend\Model\UrlInterface $url
     ) {
-        $this->_context = $context;
-        $this->_url = $url;
+        $this->context = $context;
+        $this->url = $url;
     }
 
     public function afterGetButtonList(
         \Magento\Backend\Block\Widget\Context $subject,
         $buttonList
     ) {
-        $request = $this->_context->getRequest();
+        $request = $this->context->getRequest();
 
         if ($request->getFullActionName() == 'sales_order_view') {
             $buttonList->add(
@@ -43,7 +43,7 @@ class Context
                     'onclick' => 'setLocation(\'' . $this->getShippitOrderSyncUrl($request) . '\')',
                     'class' => 'ship'
                 ],
-                -1
+                100
             );
         }
 
@@ -54,7 +54,7 @@ class Context
     {
         $orderId = $request->getParam('order_id');
 
-        return $this->_url->getUrl(
+        return $this->url->getUrl(
             'shippit/order/sync',
             [
                 'order_id' => $orderId

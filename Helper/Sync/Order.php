@@ -9,7 +9,7 @@
  * http://www.shippit.com/terms
  *
  * @category   Shippit
- * @copyright  Copyright (c) 2016 by Shippit Pty Ltd (http://www.shippit.com)
+ * @copyright  Copyright (c) by Shippit Pty Ltd (http://www.shippit.com)
  * @author     Matthew Muscat <matthew@mamis.com.au>
  * @license    http://www.shippit.com/terms
  */
@@ -19,17 +19,6 @@ namespace Shippit\Shipping\Helper\Sync;
 class Order extends \Shippit\Shipping\Helper\Data
 {
     const XML_PATH_SETTINGS = 'shippit/sync_order/';
-
-    protected $_scopeConfig;
-
-    /**
-     * @param \Magento\Framework\App\Config\ScopeConfigInterface $scopeConfig
-     */
-    public function __construct(
-        \Magento\Framework\App\Config\ScopeConfigInterface $scopeConfig
-    ) {
-        $this->_scopeConfig = $scopeConfig;
-    }
 
     /**
      * Return store config value for key
@@ -62,19 +51,9 @@ class Order extends \Shippit\Shipping\Helper\Data
         return self::getValue('send_all_orders');
     }
 
-    public function isProductLocationActive()
-    {
-        return self::getValue('product_location_active');
-    }
-
-    public function getProductLocationAttributeCode()
-    {
-        return self::getValue('product_location_attribute_code');
-    }
-
     public function getShippingMethodMapping()
     {
-        $values = unserialize( self::getValue('shipping_method_mapping'));
+        $values = $this->unserialize(self::getValue('shipping_method_mapping'));
         $mappings = [];
 
         if (!empty($values)) {
@@ -89,6 +68,10 @@ class Order extends \Shippit\Shipping\Helper\Data
     // Helper Methods
     public function getShippitShippingMethod($shippingMethod)
     {
+        if (strpos($shippingMethod, self::CARRIER_CODE_CC) !== FALSE) {
+            return 'click_and_collect';
+        }
+
         // If the shipping method is a shippit method,
         // processing using the selected shipping options
         if (strpos($shippingMethod, self::CARRIER_CODE) !== false) {
@@ -103,9 +86,11 @@ class Order extends \Shippit\Shipping\Helper\Data
                 // "priority" was referred to as "premium"
                 if ($method == 'priority' || $method == 'premium') {
                     return 'priority';
-                } else if ($method == 'express') {
+                }
+                else if ($method == 'express') {
                     return 'express';
-                } else if ($method == 'standard') {
+                }
+                else if ($method == 'standard') {
                     return 'standard';
                 }
             }
@@ -121,5 +106,21 @@ class Order extends \Shippit\Shipping\Helper\Data
 
         // All options have failed, return false
         return false;
+    }
+
+    /**
+     * Add a method to unserialze data using either
+     * Magento v2.0, v2.1 methods (PHP Object)
+     * or the new Magento v2.2 (Json Object)
+     */
+    private function unserialize($value)
+    {
+        $unserialized = json_decode($value, true);
+
+        if (json_last_error() === JSON_ERROR_NONE) {
+            return $unserialized;
+        }
+
+        return unserialize($value);
     }
 }

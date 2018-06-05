@@ -9,7 +9,7 @@
  * http://www.shippit.com/terms
  *
  * @category   Shippit
- * @copyright  Copyright (c) 2016 by Shippit Pty Ltd (http://www.shippit.com)
+ * @copyright  Copyright (c) by Shippit Pty Ltd (http://www.shippit.com)
  * @author     Matthew Muscat <matthew@mamis.com.au>
  * @license    http://www.shippit.com/terms
  */
@@ -26,6 +26,7 @@ interface OrderInterface
     const DELIVERY_INSTRUCTIONS     = 'delivery_instructions';
     const USER_ATTRIBUTES           = 'user_attributes';
     const COURIER_TYPE              = 'courier_type';
+    const COURIER_ALLOCATION        = 'courier_allocation';
     const DELIVERY_DATE             = 'delivery_date';
     const DELIVERY_WINDOW           = 'delivery_window';
     const RECEIVER_NAME             = 'receiver_name';
@@ -37,6 +38,8 @@ interface OrderInterface
     const DELIVERY_STATE            = 'delivery_state';
     const DELIVERY_COUNTRY          = 'delivery_country_code';
     const PARCEL_ATTRIBUTES         = 'parcel_attributes';
+    const RETAILER_SOURCE           = 'retailer_source';
+    const PRODUCT_CURRENCY          = 'product_currency';
 
     /**
      * Set the order to be sent to the api request
@@ -130,6 +133,21 @@ interface OrderInterface
      * @return array|null
      */
     public function getCourierType();
+
+    /**
+     * Set the Courier Allocation
+     *
+     * @param array $courierAllocation
+     * @return array
+     */
+    public function setCourierAllocation($courierAllocation);
+
+    /**
+     * Get the Courier Allocation
+     *
+     * @return array|null
+     */
+    public function getCourierAllocation();
 
     /**
      * Set the Delivery Date
@@ -288,4 +306,34 @@ interface OrderInterface
      * @return string|null
      */
     public function setParcelAttributes($parcelAttributes);
+
+    /**
+     * Get the Retailer Source
+     *
+     * @return string|null
+     */
+    public function getRetailerSource();
+
+    /**
+     * Set the Retailer Source
+     *
+     * @param string $retailerSource
+     * @return string
+     */
+    public function setRetailerSource($retailerSource);
+
+    /**
+     * Get the Product Currency
+     *
+     * @return string|null
+     */
+    public function getProductCurrency();
+
+    /**
+     * Set the Product Currency
+     *
+     * @param string $productCurrency
+     * @return string
+     */
+    public function setProductCurrency($productCurrency);
 }

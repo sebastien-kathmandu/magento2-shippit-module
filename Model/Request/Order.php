@@ -9,7 +9,7 @@
  * http://www.shippit.com/terms
  *
  * @category   Shippit
- * @copyright  Copyright (c) 2016 by Shippit Pty Ltd (http://www.shippit.com)
+ * @copyright  Copyright (c) by Shippit Pty Ltd (http://www.shippit.com)
  * @author     Matthew Muscat <matthew@mamis.com.au>
  * @license    http://www.shippit.com/terms
  */
@@ -17,6 +17,7 @@
 namespace Shippit\Shipping\Model\Request;
 
 use Shippit\Shipping\Api\Request\OrderInterface;
+use Shippit\Shipping\Model\Config\Source\Shippit\Shipping\Methods as ShippingMethods;
 
 class Order extends \Magento\Framework\Model\AbstractModel implements OrderInterface
 {
@@ -42,11 +43,6 @@ class Order extends \Magento\Framework\Model\AbstractModel implements OrderInter
      * @var \Shippit\Shipping\Api\Request\SyncOrderInterface
      */
     protected $_syncOrder;
-
-    // Shippit Service Class API Mappings
-    const SHIPPING_SERVICE_STANDARD = 'standard';
-    const SHIPPING_SERVICE_EXPRESS  = 'express';
-    const SHIPPING_SERVICE_PRIORITY = 'priority';
 
     /**
      * @param \Magento\Framework\Model\Context $context
@@ -118,7 +114,9 @@ class Order extends \Magento\Framework\Model\AbstractModel implements OrderInter
             ->setDeliverySuburb($shippingAddress->getCity())
             ->setDeliveryPostcode($shippingAddress->getPostcode())
             ->setDeliveryState($shippingAddress->getRegionCode())
-            ->setDeliveryCountry($shippingAddress->getCountryId());
+            ->setDeliveryCountry($shippingAddress->getCountryId())
+            ->setRetailerSource('magento2')
+            ->setProductCurrency($order->getOrderCurrencyCode());
 
         $this->setOrderAfter($order);
 
@@ -175,6 +173,9 @@ class Order extends \Magento\Framework\Model\AbstractModel implements OrderInter
                     $item->getQty(),
                     $item->getPrice(),
                     $item->getWeight(),
+                    $item->getLength(),
+                    $item->getWidth(),
+                    $item->getDepth(),
                     $item->getLocation()
                 );
             }
@@ -321,6 +322,26 @@ class Order extends \Magento\Framework\Model\AbstractModel implements OrderInter
     }
 
     /**
+     * Get the Courier Allocation
+     *
+     * @return array|null
+     */
+    public function getCourierAllocation()
+    {
+        return $this->getData(self::COURIER_ALLOCATION);
+    }
+
+    /**
+     * Get the Courier Allocation
+     *
+     * @return array|null
+     */
+    public function setCourierAllocation($courierAllocation)
+    {
+        return $this->setData(self::COURIER_ALLOCATION, $courierAllocation);
+    }
+
+    /**
      * Get the Delivery Date
      *
      * @return string|null
@@ -372,24 +393,32 @@ class Order extends \Magento\Framework\Model\AbstractModel implements OrderInter
      */
     public function setShippingMethod($shippingMethod = null)
     {
-        // if the order is a priority delivery,
-        // get the special delivery attributes
-        if ($shippingMethod == 'priority') {
-            $deliveryDate = $this->_getOrderDeliveryDate($this->_order);
-            $deliveryWindow = $this->_getOrderDeliveryWindow($this->_order);
-        }
+        // If the shipping method is a service level,
+        // set the courier type attribute
+        if (array_key_exists($shippingMethod, ShippingMethods::$serviceLevels)) {
+            $this->setCourierType($shippingMethod);
 
-        // set the courier details based on the shipping method
-        if ($shippingMethod == 'standard') {
-            return $this->setCourierType(self::SHIPPING_SERVICE_STANDARD);
-        } else if ($shippingMethod == 'express') {
-            return $this->setCourierType(self::SHIPPING_SERVICE_EXPRESS);
-        } else if ($shippingMethod == 'priority' && isset($deliveryDate) && isset($deliveryWindow)) {
-            return $this->setCourierType(self::SHIPPING_SERVICE_PRIORITY)
-                ->setDeliveryDate($deliveryDate)
-                ->setDeliveryWindow($deliveryWindow);
-        } else {
-            return $this->setData(self::COURIER_TYPE, self::SHIPPING_SERVICE_STANDARD);
+            // If the shipping method service level is priority,
+            // process the delivery date and delivery window
+            if ($shippingMethod == ShippingMethods::SERVICE_LEVEL_PRIORITY) {
+                $deliveryDate = $this->_getOrderDeliveryDate($this->_order);
+                $deliveryWindow = $this->_getOrderDeliveryWindow($this->_order);
+
+                if (!empty($deliveryDate) && !empty($deliveryWindow)) {
+                    $this->setDeliveryDate($deliveryDate);
+                    $this->setDeliveryWindow($deliveryWindow);
+                }
+            }
+        }
+        // If shipping method is in the list of available
+        // couriers then set a courier allocation
+        elseif (array_key_exists($shippingMethod, ShippingMethods::$couriers)) {
+            $this->setCourierAllocation($shippingMethod);
+        }
+        // Otherwise, if no matches are found, send
+        // the order as a standard service level
+        else {
+            return $this->setCourierType(ShippingMethods::SERVICE_LEVEL_STANDARD);
         }
     }
 
@@ -405,7 +434,9 @@ class Order extends \Magento\Framework\Model\AbstractModel implements OrderInter
             $courierData = [];
 
             if (isset($shippingOptions[0])) {
-                if ($shippingOptions[0] == 'Bonds') {
+                // Bonds Method Name matching has been added for
+                // historical order shipping method support
+                if ($shippingOptions[0] == 'Priority' || $shippingOptions[0] == 'Bonds') {
                     return $shippingOptions[1];
                 }
                 else {
@@ -433,7 +464,9 @@ class Order extends \Magento\Framework\Model\AbstractModel implements OrderInter
             $courierData = [];
 
             if (isset($shippingOptions[0])) {
-                if ($shippingOptions[0] == 'Bonds') {
+                // Bonds Method Name matching has been added for
+                // historical order shipping method support
+                if ($shippingOptions[0] == 'Priority' || $shippingOptions[0] == 'Bonds') {
                     return $shippingOptions[2];
                 }
                 else {
@@ -646,7 +679,7 @@ class Order extends \Magento\Framework\Model\AbstractModel implements OrderInter
      * Add a parcel with attributes
      *
      */
-    public function addItem($sku, $title, $qty, $price, $weight = 0, $location = null)
+    public function addItem($sku, $title, $qty, $price, $weight = 0, $length = null, $width = null, $depth = null, $location = null)
     {
         $parcelAttributes = $this->getParcelAttributes();
 
@@ -664,8 +697,62 @@ class Order extends \Magento\Framework\Model\AbstractModel implements OrderInter
             'location' => $location
         ];
 
+        // for dimensions, ensure the item has values for all dimensions
+        if (!empty($length) && !empty($width) && !empty($depth)) {
+            $newParcel = array_merge(
+                $newParcel,
+                array(
+                    'length' => (float) $length,
+                    'width' => (float) $width,
+                    'depth' => (float) $depth
+                )
+            );
+        }
+
         $parcelAttributes[] = $newParcel;
 
         return $this->setParcelAttributes($parcelAttributes);
+    }
+
+    /**
+     * Set the Retailer Source
+     *
+     * @param string $retailerSource
+     * @return string
+     */
+    public function setRetailerSource($retailerSource)
+    {
+        return $this->setData(self::RETAILER_SOURCE, $retailerSource);
+    }
+
+    /**
+     * Get the Retailer Source
+     *
+     * @return string
+     */
+    public function getRetailerSource()
+    {
+        return $this->getData(self::RETAILER_SOURCE);
+    }
+
+    /**
+     * Set the Product Currency
+     *
+     * @param string $productCurrency
+     * @return string
+     */
+    public function setProductCurrency($productCurrency)
+    {
+        return $this->setData(self::PRODUCT_CURRENCY, $productCurrency);
+    }
+
+    /**
+     * Get the Product Currency
+     *
+     * @return string
+     */
+    public function getProductCurrency()
+    {
+        return $this->getData(self::PRODUCT_CURRENCY);
     }
 }

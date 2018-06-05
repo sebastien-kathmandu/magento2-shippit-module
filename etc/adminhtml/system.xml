@@ -9,7 +9,7 @@
  * http://www.shippit.com/terms
  *
  * @category   Shippit
- * @copyright  Copyright (c) 2016 by Shippit Pty Ltd (http://www.shippit.com)
+ * @copyright  Copyright (c) by Shippit Pty Ltd (http://www.shippit.com)
  * @author     Matthew Muscat <matthew@mamis.com.au>
  * @license    http://www.shippit.com/terms
 -->
@@ -48,19 +48,25 @@
                 </field>
             </group>
 
-            <!-- <group id="checkout" translate="label" type="text" sortOrder="20" showInDefault="1" showInWebsite="1" showInStore="1">
+            <group id="checkout" translate="label" type="text" sortOrder="20" showInDefault="1" showInWebsite="1" showInStore="1">
                 <label>Checkout Options</label>
 
-                <field id="authority_to_leave_active" translate="label" type="select" sortOrder="10" showInDefault="1" showInWebsite="1" showInStore="0">
+                <field id="authority_to_leave_active" translate="label" type="select" sortOrder="10" showInDefault="1" showInWebsite="1" showInStore="1">
                     <label>Display Authority To Leave</label>
                     <source_model>Magento\Config\Model\Config\Source\Yesno</source_model>
                 </field>
 
-                <field id="delivery_instructions_active" translate="label" type="select" sortOrder="20" showInDefault="1" showInWebsite="1" showInStore="0">
+                <field id="delivery_instructions_active" translate="label" type="select" sortOrder="20" showInDefault="1" showInWebsite="1" showInStore="1">
                     <label>Display Delivery Instructions</label>
                     <source_model>Magento\Config\Model\Config\Source\Yesno</source_model>
                 </field>
-            </group> -->
+
+                <field id="hide_checkout_options_shipping_methods" type="multiselect" translate="label" sortOrder="30" showInDefault="1" showInWebsite="1" showInStore="1">
+                    <label>Hide Checkout Options for Shipping Methods</label>
+                    <source_model>Shippit\Shipping\Model\Config\Source\Shipping\Methods</source_model>
+                    <comment>Select the Shipping Methods that should hide the "Authority To Leave" and "Delivery Instructions" options during checkout.</comment>
+                </field>
+            </group>
 
             <group id="sync_order" translate="label" type="text" sortOrder="30" showInDefault="1" showInWebsite="1" showInStore="1">
                 <label>Order Sync</label>
@@ -80,12 +86,65 @@
                     <source_model>Shippit\Shipping\Model\Config\Source\Shippit\Sync\Order\SendAllOrders</source_model>
                 </field>
 
-                <field id="product_location_active" translate="label" type="select" sortOrder="40" showInDefault="1" showInWebsite="1" showInStore="0">
+                <field id="shipping_method_mapping" translate="label comment" sortOrder="60" showInDefault="1" showInWebsite="1" showInStore="0">
+                    <label>Shipping Method Mapping</label>
+                    <frontend_model>Shippit\Shipping\Block\Adminhtml\System\Config\Form\Field\Sync\Order\ShippingMethodMapping</frontend_model>
+                    <backend_model>Shippit\Shipping\Model\Config\ArraySerialized</backend_model>
+                    <comment>A mapping of the Magento Shipping Methods to Shippit Services classes</comment>
+                </field>
+            </group>
+
+            <group id="sync_item" translate="label" type="text" sortOrder="40" showInDefault="1" showInWebsite="1" showInStore="1">
+                <label>Items Sync</label>
+
+                <field id="product_dimension_active" translate="label" type="select" sortOrder="10" showInDefault="1" showInWebsite="1" showInStore="0">
+                    <label>Send Product Dimensions</label>
+                    <source_model>Magento\Config\Model\Config\Source\Yesno</source_model>
+                    <comment>Send the product package dimensions to Shippit</comment>
+                </field>
+
+                <field id="product_unit_dimension" translate="label" type="select" sortOrder="20" showInDefault="1" showInWebsite="1" showInStore="0">
+                    <label>Product Dimensions Unit</label>
+                    <source_model>Shippit\Shipping\Model\Config\Source\Catalog\Unit\Dimensions</source_model>
+                    <comment>The unit of measurement used for the product dimensions</comment>
+                    <depends>
+                        <field id="product_dimension_active">1</field>
+                    </depends>
+                </field>
+
+                <field id="product_dimension_length_attribute_code" translate="label" type="select" sortOrder="30" showInDefault="1" showInWebsite="1" showInStore="0">
+                    <label>Product Length Attribute Code</label>
+                    <source_model>Shippit\Shipping\Model\Config\Source\Catalog\Attributes</source_model>
+                    <comment>The Product Attribute to be used for length data</comment>
+                    <depends>
+                        <field id="product_dimension_active">1</field>
+                    </depends>
+                </field>
+
+                <field id="product_dimension_width_attribute_code" translate="label" type="select" sortOrder="40" showInDefault="1" showInWebsite="1" showInStore="0">
+                    <label>Product Width Attribute Code</label>
+                    <source_model>Shippit\Shipping\Model\Config\Source\Catalog\Attributes</source_model>
+                    <comment>The Product Attribute to be used for width data</comment>
+                    <depends>
+                        <field id="product_dimension_active">1</field>
+                    </depends>
+                </field>
+
+                <field id="product_dimension_depth_attribute_code" translate="label" type="select" sortOrder="50" showInDefault="1" showInWebsite="1" showInStore="0">
+                    <label>Product Depth Attribute Code</label>
+                    <source_model>Shippit\Shipping\Model\Config\Source\Catalog\Attributes</source_model>
+                    <comment>The Product Attribute to be used for depth data</comment>
+                    <depends>
+                        <field id="product_dimension_active">1</field>
+                    </depends>
+                </field>
+
+                <field id="product_location_active" translate="label" type="select" sortOrder="60" showInDefault="1" showInWebsite="1" showInStore="0">
                     <label>Send Product Location to Shippit</label>
                     <source_model>Magento\Config\Model\Config\Source\Yesno</source_model>
                 </field>
 
-                <field id="product_location_attribute_code" translate="label comment" type="select" sortOrder="50" showInDefault="1" showInWebsite="1" showInStore="0">
+                <field id="product_location_attribute_code" translate="label comment" type="select" sortOrder="70" showInDefault="1" showInWebsite="1" showInStore="0">
                     <label>Product Location Attribute Code</label>
                     <source_model>Shippit\Shipping\Model\Config\Source\Catalog\Attributes</source_model>
                     <depends>
@@ -93,16 +152,9 @@
                     </depends>
                     <comment>The Product Attribute to be used for location information on Shippit Pick Slips</comment>
                 </field>
-
-                <field id="shipping_method_mapping" translate="label comment" sortOrder="60" showInDefault="1" showInWebsite="1" showInStore="0">
-                    <label>Shipping Method Mapping</label>
-                    <frontend_model>Shippit\Shipping\Block\Adminhtml\System\Config\Form\Field\Sync\Order\ShippingMethodMapping</frontend_model>
-                    <backend_model>Magento\Config\Model\Config\Backend\Serialized\ArraySerialized</backend_model>
-                    <comment>A mapping of the Magento Shipping Methods to Shippit Services classes</comment>
-                </field>
             </group>
 
-            <group id="sync_shipping" translate="label" type="text" sortOrder="40" showInDefault="1" showInWebsite="1" showInStore="1">
+            <group id="sync_shipping" translate="label" type="text" sortOrder="50" showInDefault="1" showInWebsite="1" showInStore="1">
                 <label>Shipping Sync</label>
 
                 <field id="active" translate="label" type="select" sortOrder="10" showInDefault="1" showInWebsite="1" showInStore="0">
@@ -114,7 +166,7 @@
 
         <section id="carriers" translate="label" type="text" sortOrder="320" showInDefault="1" showInWebsite="1" showInStore="1">
             <group id="shippit" translate="label" type="text" sortOrder="0" showInDefault="1" showInWebsite="1" showInStore="1">
-                <label>Shippit</label>
+                <label>Shippit - Live Quotes</label>
 
                 <field id="active" translate="label" type="select" sortOrder="10" showInDefault="1" showInWebsite="1" showInStore="0">
                     <label>Enabled</label>
@@ -127,7 +179,7 @@
 
                 <field id="allowed_methods" translate="label" type="multiselect" sortOrder="30" showInDefault="1" showInWebsite="1" showInStore="0">
                     <label>Allowed Methods</label>
-                    <source_model>Shippit\Shipping\Model\Config\Source\Shippit\Methods</source_model>
+                    <source_model>Shippit\Shipping\Model\Config\Source\Shippit\Shipping\QuoteMethods</source_model>
                     <can_be_empty>1</can_be_empty>
                 </field>
 
@@ -168,7 +220,7 @@
                     <source_model>Magento\Config\Model\Config\Source\Yesno</source_model>
                 </field>
 
-                <field id="product_attribute_code" translate="label" type="select" sortOrder="130" showInDefault="1" showInWebsite="1" showInStore="0">
+                <field id="enabled_product_attribute_code" translate="label" type="select" sortOrder="130" showInDefault="1" showInWebsite="1" showInStore="0">
                     <label>Product Attribute Code</label>
                     <source_model>Shippit\Shipping\Model\Config\Source\Catalog\Attributes</source_model>
                     <depends>
@@ -177,7 +229,7 @@
                     <can_be_empty>1</can_be_empty>
                 </field>
 
-                <field id="product_attribute_value" translate="label" type="text" sortOrder="140" showInDefault="1" showInWebsite="1" showInStore="0">
+                <field id="enabled_product_attribute_value" translate="label" type="text" sortOrder="140" showInDefault="1" showInWebsite="1" showInStore="0">
                     <label>Product Attribute Value</label>
                     <depends>
                         <field id="enabled_product_attribute_active">1</field>
@@ -209,6 +261,39 @@
                 </field>
 
                 <field id="sort_order" translate="label" type="text" sortOrder="190" showInDefault="1" showInWebsite="1" showInStore="0">
+                    <label>Sort Order</label>
+                </field>
+            </group>
+
+            <group id="shippit_cc" translate="label" type="text" sortOrder="0" showInDefault="1" showInWebsite="1" showInStore="1">
+                <label>Shippit - Click and Collect</label>
+
+                <field id="active" translate="label" type="select" sortOrder="10" showInDefault="1" showInWebsite="1" showInStore="0">
+                    <label>Enabled</label>
+                    <source_model>Magento\Config\Model\Config\Source\Yesno</source_model>
+                </field>
+
+                <field id="title" translate="label" type="text" sortOrder="20" showInDefault="1" showInWebsite="1" showInStore="1">
+                    <label>Title</label>
+                </field>
+
+                <field id="method" translate="label" type="text" sortOrder="30" showInDefault="1" showInWebsite="1" showInStore="1">
+                    <label>Method Name</label>
+                </field>
+
+                <field id="sallowspecific" translate="label" type="select" sortOrder="40" showInDefault="1" showInWebsite="1" showInStore="0">
+                    <label>Ship to Applicable Countries</label>
+                    <frontend_class>shipping-applicable-country</frontend_class>
+                    <source_model>Magento\Shipping\Model\Config\Source\Allspecificcountries</source_model>
+                </field>
+
+                <field id="specificcountry" translate="label" type="multiselect" sortOrder="50" showInDefault="1" showInWebsite="1" showInStore="0">
+                    <label>Ship to Specific Countries</label>
+                    <source_model>Magento\Directory\Model\Config\Source\Country</source_model>
+                    <can_be_empty>1</can_be_empty>
+                </field>
+
+                <field id="sort_order" translate="label" type="text" sortOrder="60" showInDefault="1" showInWebsite="1" showInStore="0">
                     <label>Sort Order</label>
                 </field>
             </group>

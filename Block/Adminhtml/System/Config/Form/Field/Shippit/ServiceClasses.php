@@ -9,7 +9,7 @@
  * http://www.shippit.com/terms
  *
  * @category   Shippit
- * @copyright  Copyright (c) 2016 by Shippit Pty Ltd (http://www.shippit.com)
+ * @copyright  Copyright (c) by Shippit Pty Ltd (http://www.shippit.com)
  * @author     Matthew Muscat <matthew@mamis.com.au>
  * @license    http://www.shippit.com/terms
  */
@@ -35,7 +35,7 @@ class ServiceClasses extends \Magento\Framework\View\Element\Html\Select
      */
     public function __construct(
         \Magento\Framework\View\Element\Context $context,
-        \Shippit\Shipping\Model\Config\Source\Shippit\Methods $methods,
+        \Shippit\Shipping\Model\Config\Source\Shippit\Shipping\Methods $methods,
         array $data = []
     )
     {

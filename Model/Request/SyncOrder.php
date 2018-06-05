@@ -9,14 +9,15 @@
  * http://www.shippit.com/terms
  *
  * @category   Shippit
- * @copyright  Copyright (c) 2016 by Shippit Pty Ltd (http://www.shippit.com)
+ * @copyright  Copyright (c) by Shippit Pty Ltd (http://www.shippit.com)
  * @author     Matthew Muscat <matthew@mamis.com.au>
  * @license    http://www.shippit.com/terms
  */
 
 namespace Shippit\Shipping\Model\Request;
 
-use \Magento\Framework\Exception\LocalizedException;
+use Magento\Framework\Exception\LocalizedException;
+use Shippit\Shipping\Model\Config\Source\Shippit\Shipping\Methods as ShippingMethods;
 
 class SyncOrder extends \Magento\Framework\Model\AbstractModel implements \Shippit\Shipping\Api\Request\SyncOrderInterface
 {
@@ -154,26 +155,22 @@ class SyncOrder extends \Magento\Framework\Model\AbstractModel implements \Shipp
      */
     public function setShippingMethod($shippingMethod)
     {
-        // Standard, express and priority options are available
-        // Priority services requires the use of live quoting to determine
-        // booking availability
-        $validShippingMethods = [
-            'standard',
-            'express',
-            'international',
-            'priority'
-        ];
-
-        // if the shipping method passed is not a standard shippit service class, attempt to get a service class based on the configured mapping
-        if (!in_array($shippingMethod, $validShippingMethods)) {
+        // if the shipping method passed is not a recognised
+        // service level or courier, attempt to retrive the
+        // shipping method based on the shipping method mapping
+        if (!array_key_exists($shippingMethod, ShippingMethods::$serviceLevels)
+            && !array_key_exists($shippingMethod, ShippingMethods::$couriers)) {
             $shippingMethod = $this->_helper->getShippitShippingMethod($shippingMethod);
         }
 
-        if (in_array($shippingMethod, $validShippingMethods)) {
+        // Process the shipping method using the Shippit
+        // Service Level / Carrier List
+        if (array_key_exists($shippingMethod, ShippingMethods::$serviceLevels)
+            || array_key_exists($shippingMethod, ShippingMethods::$couriers)) {
             return $this->setData(self::SHIPPING_METHOD, $shippingMethod);
         }
         else {
-            return $this->setData(self::SHIPPING_METHOD, 'standard');
+            return $this->setData(self::SHIPPING_METHOD, ShippingMethods::SERVICE_LEVEL_STANDARD);
         }
     }
 
@@ -216,35 +213,33 @@ class SyncOrder extends \Magento\Framework\Model\AbstractModel implements \Shipp
         $itemsAdded = 0;
 
         foreach ($itemsCollection as $item) {
-            if ($item->getHasChildren()) {
+            // Skip the item if...
+            // - it is a dummy item not required for shipment
+            // - it is a virtual item
+            if ($item->isDummy(true) || $item->getIsVirtual()) {
                 continue;
             }
 
-            $requestedQty = $this->_itemsHelper->getItemData($items, 'sku', $item->getSku(), 'qty');
+            $itemQty = $this->getItemQty($items, $item);
 
-            /**
-             * Magento marks a shipment only for the parent item in the order
-             * get the parent item to determine the correct qty to ship
-             */
-            $rootItem = $this->_getRootItem($item);
-
-            $itemQty = $this->_itemsHelper->getQtyToShip($rootItem, $requestedQty);
-            $itemWeight = $item->getWeight();
-
-            $itemLocation = $this->_itemsHelper->getLocation($item);
-
-            if ($itemQty > 0) {
-                $this->addItem(
-                    $item->getSku(),
-                    $item->getName(),
-                    $itemQty,
-                    $rootItem->getBasePrice(),
-                    $itemWeight,
-                    $itemLocation
-                );
-
-                $itemsAdded++;
+            // If the item qty is 0, skip this item from being sent to Shippit
+            if ($itemQty <= 0) {
+                continue;
             }
+
+            $this->addItem(
+                $this->getItemSku($item),
+                $this->getItemName($item),
+                $itemQty,
+                $this->getItemPrice($item),
+                $this->getItemWeight($item),
+                $this->getItemLength($item),
+                $this->getItemWidth($item),
+                $this->getItemDepth($item),
+                $this->getItemLocation($item)
+            );
+
+            $itemsAdded++;
         }
 
         if ($itemsAdded == 0) {
@@ -267,10 +262,167 @@ class SyncOrder extends \Magento\Framework\Model\AbstractModel implements \Shipp
     }
 
     /**
+     * Returns the first child item of the item passed
+     * - If the item is a bundle and is being shipped together
+     *   we return the bundle item, as it's the "shipped" product
+     *
+     * @param  Mage_Sales_Model_Order_Item $item
+     * @return Mage_Sales_Model_Order_Item
+     */
+    protected function _getChildItem($item)
+    {
+        if ($item->getHasChildren()) {
+            $rootItem = $this->_getRootItem($item);
+
+            // Get the first child item
+            // - If the root item is a bundle, use the item
+            //   Otherwise, use the root item
+            if ($rootItem->getProductType() == 'bundle') {
+                // if we are sending the bundle together
+                if ($rootItem->getId() == $item->getId()) {
+                    return $rootItem;
+                }
+                else {
+                    $items = $item->getChildrenItems();
+
+                    return reset($items);
+                }
+            }
+            else {
+                $items = $item->getChildrenItems();
+
+                return reset($items);
+            }
+        }
+        else {
+            return $item;
+        }
+    }
+
+    protected function getItemSku($item)
+    {
+        return $item->getSku();
+    }
+
+    protected function getItemName($item)
+    {
+        $childItem = $this->_getChildItem($item);
+
+        return $childItem->getName();
+    }
+
+    protected function getItemQty($items, $item)
+    {
+        $requestedQty = $this->getRequestedQuantity($items, 'sku', $item->getSku(), 'qty');
+
+        return $this->_itemsHelper->getQtyToShip($item, $requestedQty);
+    }
+
+    protected function getRequestedQuantity($items, $itemKey, $itemSku, $itemDataKey)
+    {
+        return $this->_itemsHelper->getItemData($items, $itemKey, $itemSku, $itemDataKey);
+    }
+
+    protected function getItemPrice($item)
+    {
+        $rootItem = $this->_getRootItem($item);
+
+        // Get the item price
+        // - If the root item is a bundle, use the item price
+        //   Otherwise, use the root item price
+        if ($rootItem->getProductType() == 'bundle') {
+            return $this->getBundleItemPrice($item);
+        }
+        else {
+            return $this->getBasicItemPrice($item);
+        }
+    }
+
+    protected function getBundleItemPrice($item)
+    {
+        $rootItem = $this->_getRootItem($item);
+
+        // if we are sending the bundle together
+        if ($rootItem->getId() == $item->getId()) {
+            $childItems = $rootItem->getChildrenItems();
+            $itemPrice = 0;
+
+            foreach ($childItems as $childItem) {
+                // Get the number of items in the bundle per bundle package purchased
+                $childItemQty = ($childItem->getQtyOrdered() / $rootItem->getQtyOrdered());
+                $rowTotalAfterDiscounts = $childItem->getRowTotal() - $childItem->getDiscountAmount();
+                $rowUnitPrice = $rowTotalAfterDiscounts / $childItem->getQtyOrdered();
+                $bundleItemUnitPrice = $rowUnitPrice * $childItemQty;
+
+                $itemPrice += $bundleItemUnitPrice;
+            }
+
+            return round($itemPrice, 2);
+        }
+        // if we are sending the bundle individually
+        else {
+            return $this->getBasicItemPrice($item);
+        }
+    }
+
+    protected function getBasicItemPrice($item)
+    {
+        $rowTotalAfterDiscounts = $item->getRowTotal() - $item->getDiscountAmount();
+        $itemPrice = $rowTotalAfterDiscounts / $item->getQtyOrdered();
+
+        return round($itemPrice, 2);
+    }
+
+    protected function getItemWeight($item)
+    {
+        return $item->getWeight();
+    }
+
+    protected function getItemLength($item)
+    {
+        $childItem = $this->_getChildItem($item);
+
+        if (!$this->_itemsHelper->isProductDimensionActive()) {
+            return;
+        }
+
+        return $this->_itemsHelper->getLength($childItem);
+    }
+
+    protected function getItemWidth($item)
+    {
+        $childItem = $this->_getChildItem($item);
+
+        if (!$this->_itemsHelper->isProductDimensionActive()) {
+            return;
+        }
+
+        return $this->_itemsHelper->getWidth($childItem);
+    }
+
+    protected function getItemDepth($item)
+    {
+        $childItem = $this->_getChildItem($item);
+
+        if (!$this->_itemsHelper->isProductDimensionActive()) {
+            return;
+        }
+
+        return $this->_itemsHelper->getDepth($childItem);
+    }
+
+    protected function getItemLocation($item)
+    {
+        $childItem = $this->_getChildItem($item);
+
+        return $this->_itemsHelper->getLocation($childItem);
+    }
+
+    /**
      * Add a parcel with attributes
      *
      */
-    public function addItem($sku, $title, $qty, $price, $weight = 0, $location = null)
+    public function addItem($sku, $title, $qty, $price, $weight = 0, $length = null, $width = null, $depth = null, $location = null)
     {
         $items = $this->getItems();
 
@@ -286,6 +438,18 @@ class SyncOrder extends \Magento\Framework\Model\AbstractModel implements \Shipp
             'weight' => (float) $weight,
             'location' => $location
         ];
+
+        // for dimensions, ensure the item has values for all dimensions
+        if (!empty($length) && !empty($width) && !empty($depth)) {
+            $newItem = array_merge(
+                $newItem,
+                array(
+                    'length' => (float) $length,
+                    'width' => (float) $width,
+                    'depth' => (float) $depth
+                )
+            );
+        }
 
         $items[] = $newItem;
 

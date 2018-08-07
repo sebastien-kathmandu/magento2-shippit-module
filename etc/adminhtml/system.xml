@@ -35,6 +35,7 @@
 
                 <field id="api_key" translate="label" type="text" sortOrder="40" showInDefault="1" showInWebsite="1" showInStore="0">
                     <label>API Key</label>
+                    <backend_model>Shippit\Shipping\Model\Config\Backend\Shippit\General\ApiKey</backend_model>
                 </field>
 
                 <field id="environment" translate="label" type="select" sortOrder="50" showInDefault="1" showInWebsite="1" showInStore="0">
@@ -152,6 +153,12 @@
                     </depends>
                     <comment>The Product Attribute to be used for location information on Shippit Pick Slips</comment>
                 </field>
+
+                <field id="product_tariff_code" translate="label comment" type="select" sortOrder="80" showInDefault="1" showInWebsite="1" showInStore="0">
+                    <label>Product Tariff Code</label>
+                    <source_model>Shippit\Shipping\Model\Config\Source\Catalog\Attributes</source_model>
+                    <comment>The Product Attribute to be used for tariff code information sent to Shippit.</comment>
+                </field>
             </group>
 
             <group id="sync_shipping" translate="label" type="text" sortOrder="50" showInDefault="1" showInWebsite="1" showInStore="1">
@@ -160,6 +167,7 @@
                 <field id="active" translate="label" type="select" sortOrder="10" showInDefault="1" showInWebsite="1" showInStore="0">
                     <label>Enabled</label>
                     <source_model>Magento\Config\Model\Config\Source\Yesno</source_model>
+                    <backend_model>Shippit\Shipping\Model\Config\Backend\Shippit\SyncShipping\Active</backend_model>
                 </field>
             </group>
         </section>

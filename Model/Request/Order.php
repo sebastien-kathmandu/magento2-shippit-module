@@ -115,7 +115,7 @@ class Order extends \Magento\Framework\Model\AbstractModel implements OrderInter
             ->setDeliveryPostcode($shippingAddress->getPostcode())
             ->setDeliveryState($shippingAddress->getRegionCode())
             ->setDeliveryCountry($shippingAddress->getCountryId())
-            ->setRetailerSource('magento2')
+            ->setSourcePlatform('magento2')
             ->setProductCurrency($order->getOrderCurrencyCode());
 
         $this->setOrderAfter($order);
@@ -133,17 +133,8 @@ class Order extends \Magento\Framework\Model\AbstractModel implements OrderInter
             $postcodeState = $this->_helper->getStateFromPostcode($this->getDeliveryPostcode());
 
             if ($postcodeState) {
-                $this->setData(self::DELIVERY_STATE, $postcodeState);
+                $this->setDeliveryState($postcodeState);
             }
-        }
-
-        $deliveryState = $this->getDeliveryState();
-        $deliverySuburb = $this->getDeliverySuburb();
-
-        // If the delivery state is empty
-        // Copy the suburb field to the state field
-        if (empty($deliveryState) && !empty($deliverySuburb)) {
-            $this->setData(self::DELIVERY_STATE, $deliverySuburb);
         }
 
         return $this;
@@ -176,7 +167,8 @@ class Order extends \Magento\Framework\Model\AbstractModel implements OrderInter
                     $item->getLength(),
                     $item->getWidth(),
                     $item->getDepth(),
-                    $item->getLocation()
+                    $item->getLocation(),
+                    $item->getTariffCode()
                 );
             }
         }
@@ -395,7 +387,9 @@ class Order extends \Magento\Framework\Model\AbstractModel implements OrderInter
     {
         // If the shipping method is a service level,
         // set the courier type attribute
-        if (array_key_exists($shippingMethod, ShippingMethods::$serviceLevels)) {
+        if (!empty($shippingMethod)
+            && array_key_exists($shippingMethod, ShippingMethods::$serviceLevels)
+        ) {
             $this->setCourierType($shippingMethod);
 
             // If the shipping method service level is priority,
@@ -412,7 +406,9 @@ class Order extends \Magento\Framework\Model\AbstractModel implements OrderInter
         }
         // If shipping method is in the list of available
         // couriers then set a courier allocation
-        elseif (array_key_exists($shippingMethod, ShippingMethods::$couriers)) {
+        elseif (!empty($shippingMethod)
+            && array_key_exists($shippingMethod, ShippingMethods::$couriers)
+        ) {
             $this->setCourierAllocation($shippingMethod);
         }
         // Otherwise, if no matches are found, send
@@ -626,10 +622,6 @@ class Order extends \Magento\Framework\Model\AbstractModel implements OrderInter
      */
     public function setDeliveryState($deliveryState)
     {
-        if (empty($deliveryState)) {
-            $deliveryState = $this->_helper->getStateFromPostcode($this->getDeliveryPostcode());
-        }
-
         return $this->setData(self::DELIVERY_STATE, $deliveryState);
     }
 
@@ -679,7 +671,7 @@ class Order extends \Magento\Framework\Model\AbstractModel implements OrderInter
      * Add a parcel with attributes
      *
      */
-    public function addItem($sku, $title, $qty, $price, $weight = 0, $length = null, $width = null, $depth = null, $location = null)
+    public function addItem($sku, $title, $qty, $price, $weight = 0, $length = null, $width = null, $depth = null, $location = null, $tariffcode = null)
     {
         $parcelAttributes = $this->getParcelAttributes();
 
@@ -694,7 +686,8 @@ class Order extends \Magento\Framework\Model\AbstractModel implements OrderInter
             'price' => (float) $price,
             // if a 0 weight is provided, stub the weight to 0.2kg
             'weight' => (float) ($weight == 0 ? 0.2 : $weight),
-            'location' => $location
+            'location' => $location,
+            'tariff_code' => $tariffcode,
         ];
 
         // for dimensions, ensure the item has values for all dimensions
@@ -715,24 +708,24 @@ class Order extends \Magento\Framework\Model\AbstractModel implements OrderInter
     }
 
     /**
-     * Set the Retailer Source
+     * Set the Source Platform
      *
-     * @param string $retailerSource
+     * @param string $sourcePlatform
      * @return string
      */
-    public function setRetailerSource($retailerSource)
+    public function setSourcePlatform($sourcePlatform)
     {
-        return $this->setData(self::RETAILER_SOURCE, $retailerSource);
+        return $this->setData(self::SOURCE_PLATFORM, $sourcePlatform);
     }
 
     /**
-     * Get the Retailer Source
+     * Get the Source Platform
      *
      * @return string
      */
-    public function getRetailerSource()
+    public function getSourcePlatform()
     {
-        return $this->getData(self::RETAILER_SOURCE);
+        return $this->getData(self::SOURCE_PLATFORM);
     }
 
     /**

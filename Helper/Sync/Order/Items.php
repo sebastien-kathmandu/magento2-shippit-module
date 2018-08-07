@@ -16,6 +16,8 @@
 
 namespace Shippit\Shipping\Helper\Sync\Order;
 
+use Magento\Store\Model\ScopeInterface;
+
 class Items extends \Shippit\Shipping\Helper\Sync\Order
 {
     const UNIT_DIMENSION_MILLIMETRES = 'millimetres';
@@ -32,7 +34,7 @@ class Items extends \Shippit\Shipping\Helper\Sync\Order
      * @param   string $key
      * @return  string
      */
-    public function getValue($key, $scope = 'website')
+    public function getValue($key, $scope = ScopeInterface::SCOPE_STORES)
     {
         $path = self::XML_PATH_SETTINGS . $key;
 
@@ -76,6 +78,11 @@ class Items extends \Shippit\Shipping\Helper\Sync\Order
     public function getProductLocationAttributeCode()
     {
         return $this->getValue('product_location_attribute_code');
+    }
+
+    public function getProductTariffAttributeCode()
+    {
+        return $this->getValue('product_tariff_code');
     }
 
     /**
@@ -141,6 +148,17 @@ class Items extends \Shippit\Shipping\Helper\Sync\Order
         $attributeValue = $this->getAttributeValue($item->getProduct(), $attributeCode);
 
         return $this->getDimension($attributeValue);
+    }
+
+    public function getTariffCode($item)
+    {
+        $attributeCode = $this->getProductTariffAttributeCode();
+
+        if (empty($attributeCode)) {
+            return;
+        }
+
+        return $this->getAttributeValue($item->getProduct(), $attributeCode);
     }
 
     public function getSkus($items)

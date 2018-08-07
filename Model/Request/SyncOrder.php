@@ -158,15 +158,23 @@ class SyncOrder extends \Magento\Framework\Model\AbstractModel implements \Shipp
         // if the shipping method passed is not a recognised
         // service level or courier, attempt to retrive the
         // shipping method based on the shipping method mapping
-        if (!array_key_exists($shippingMethod, ShippingMethods::$serviceLevels)
-            && !array_key_exists($shippingMethod, ShippingMethods::$couriers)) {
+        if (!empty($shippingMethod)
+            && (
+                !array_key_exists($shippingMethod, ShippingMethods::$serviceLevels)
+                && !array_key_exists($shippingMethod, ShippingMethods::$couriers)
+            )
+        ) {
             $shippingMethod = $this->_helper->getShippitShippingMethod($shippingMethod);
         }
 
         // Process the shipping method using the Shippit
         // Service Level / Carrier List
-        if (array_key_exists($shippingMethod, ShippingMethods::$serviceLevels)
-            || array_key_exists($shippingMethod, ShippingMethods::$couriers)) {
+        if (!empty($shippingMethod)
+            && (
+                array_key_exists($shippingMethod, ShippingMethods::$serviceLevels)
+                || array_key_exists($shippingMethod, ShippingMethods::$couriers)
+            )
+        ) {
             return $this->setData(self::SHIPPING_METHOD, $shippingMethod);
         }
         else {
@@ -236,7 +244,8 @@ class SyncOrder extends \Magento\Framework\Model\AbstractModel implements \Shipp
                 $this->getItemLength($item),
                 $this->getItemWidth($item),
                 $this->getItemDepth($item),
-                $this->getItemLocation($item)
+                $this->getItemLocation($item),
+                $this->getItemTariffCode($item)
             );
 
             $itemsAdded++;
@@ -350,7 +359,7 @@ class SyncOrder extends \Magento\Framework\Model\AbstractModel implements \Shipp
             foreach ($childItems as $childItem) {
                 // Get the number of items in the bundle per bundle package purchased
                 $childItemQty = ($childItem->getQtyOrdered() / $rootItem->getQtyOrdered());
-                $rowTotalAfterDiscounts = $childItem->getRowTotal() - $childItem->getDiscountAmount();
+                $rowTotalAfterDiscounts = $childItem->getRowTotalInclTax() - $childItem->getDiscountAmount();
                 $rowUnitPrice = $rowTotalAfterDiscounts / $childItem->getQtyOrdered();
                 $bundleItemUnitPrice = $rowUnitPrice * $childItemQty;
 
@@ -367,7 +376,7 @@ class SyncOrder extends \Magento\Framework\Model\AbstractModel implements \Shipp
 
     protected function getBasicItemPrice($item)
     {
-        $rowTotalAfterDiscounts = $item->getRowTotal() - $item->getDiscountAmount();
+        $rowTotalAfterDiscounts = $item->getRowTotalInclTax() - $item->getDiscountAmount();
         $itemPrice = $rowTotalAfterDiscounts / $item->getQtyOrdered();
 
         return round($itemPrice, 2);
@@ -418,11 +427,18 @@ class SyncOrder extends \Magento\Framework\Model\AbstractModel implements \Shipp
         return $this->_itemsHelper->getLocation($childItem);
     }
 
+    protected function getItemTariffCode($item)
+    {
+        $childItem = $this->_getChildItem($item);
+
+        return $this->_itemsHelper->getTariffCode($childItem);
+    }
+
     /**
      * Add a parcel with attributes
      *
      */
-    public function addItem($sku, $title, $qty, $price, $weight = 0, $length = null, $width = null, $depth = null, $location = null)
+    public function addItem($sku, $title, $qty, $price, $weight = 0, $length = null, $width = null, $depth = null, $location = null, $tariffCode = null)
     {
         $items = $this->getItems();
 
@@ -436,7 +452,8 @@ class SyncOrder extends \Magento\Framework\Model\AbstractModel implements \Shipp
             'qty' => (float) $qty,
             'price' => (float) $price,
             'weight' => (float) $weight,
-            'location' => $location
+            'location' => $location,
+            'tariff_code' => $tariffCode,
         ];
 
         // for dimensions, ensure the item has values for all dimensions

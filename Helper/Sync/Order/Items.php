@@ -80,9 +80,24 @@ class Items extends \Shippit\Shipping\Helper\Sync\Order
         return $this->getValue('product_location_attribute_code');
     }
 
-    public function getProductTariffAttributeCode()
+    public function isProductTariffCodeActive()
     {
-        return $this->getValue('product_tariff_code');
+        return $this->getValue('product_tariff_code_active');
+    }
+
+    public function getProductTariffCodeAttributeCode()
+    {
+        return $this->getValue('product_tariff_code_attribute_code');
+    }
+
+    public function isProductOriginCountryCodeActive()
+    {
+        return $this->getValue('product_origin_country_code_active');
+    }
+
+    public function getProductOriginCountryCodeAttributeCode()
+    {
+        return $this->getValue('product_origin_country_code_attribute_code');
     }
 
     /**
@@ -150,15 +165,67 @@ class Items extends \Shippit\Shipping\Helper\Sync\Order
         return $this->getDimension($attributeValue);
     }
 
-    public function getTariffCode($item)
+    public function getLocation($item)
     {
-        $attributeCode = $this->getProductTariffAttributeCode();
+        $attributeCode = $this->getLocationAttributeCode();
 
         if (empty($attributeCode)) {
             return;
         }
 
-        return $this->getAttributeValue($item->getProduct(), $attributeCode);
+        $location = $this->getAttributeValue($item->getProduct(), $attributeCode);
+
+        // Trim the value, as some attributes can introduce a space character when it's empty
+        $location = trim($location);
+
+        // If an empty value is provided, return null
+        if (empty($location)) {
+            return;
+        }
+
+        return $location;
+    }
+
+    public function getTariffCode($item)
+    {
+        $attributeCode = $this->getProductTariffCodeAttributeCode();
+
+        if (empty($attributeCode)) {
+            return;
+        }
+
+        $tariffCode = $this->getAttributeValue($item->getProduct(), $attributeCode);
+
+        // Trim the value, as some attributes can introduce a space character when it's empty
+        $tariffCode = trim($tariffCode);
+
+        // If an empty value is provided, return null
+        if (empty($tariffCode)) {
+            return;
+        }
+
+        return $tariffCode;
+    }
+
+    public function getOriginCountryCode($item)
+    {
+        $attributeCode = $this->getProductOriginCountryCodeAttributeCode();
+
+        if (empty($attributeCode)) {
+            return;
+        }
+
+        $originCountryCode = $this->getAttributeValue($item->getProduct(), $attributeCode);
+
+        // Trim the value, as some attributes can introduce a space character when it's empty
+        $originCountryCode = trim($originCountryCode);
+
+        // If an empty value is provided, return null
+        if (empty($originCountryCode)) {
+            return;
+        }
+
+        return $originCountryCode;
     }
 
     public function getSkus($items)
@@ -212,18 +279,6 @@ class Items extends \Shippit\Shipping\Helper\Sync\Order
         }
 
         return false;
-    }
-
-    public function getLocation($item)
-    {
-        $attributeCode = $this->getLocationAttributeCode();
-
-        if ($attributeCode) {
-            return $this->getAttributeValue($item->getProduct(), $attributeCode);
-        }
-        else {
-            return null;
-        }
     }
 
     public function getLocationAttributeCode()

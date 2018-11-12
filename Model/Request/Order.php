@@ -116,9 +116,9 @@ class Order extends \Magento\Framework\Model\AbstractModel implements OrderInter
             ->setDeliveryState($shippingAddress->getRegionCode())
             ->setDeliveryCountry($shippingAddress->getCountryId())
             ->setSourcePlatform('magento2')
-            ->setProductCurrency($order->getOrderCurrencyCode());
+            ->setProductCurrency($this->_order->getOrderCurrencyCode());
 
-        $this->setOrderAfter($order);
+        $this->setOrderAfter($this->_order);
 
         return $this;
     }
@@ -149,7 +149,7 @@ class Order extends \Magento\Framework\Model\AbstractModel implements OrderInter
             // If we don't have specific items in the request, build
             // the request dynamically from the order object
             $items = $this->_syncOrder
-                ->setOrder($this->order)
+                ->setOrder($this->_order)
                 ->setItems()
                 ->getItems();
 
@@ -168,7 +168,8 @@ class Order extends \Magento\Framework\Model\AbstractModel implements OrderInter
                     $item->getWidth(),
                     $item->getDepth(),
                     $item->getLocation(),
-                    $item->getTariffCode()
+                    $item->getTariffCode(),
+                    $item->getOriginCountryCode()
                 );
             }
         }
@@ -671,8 +672,19 @@ class Order extends \Magento\Framework\Model\AbstractModel implements OrderInter
      * Add a parcel with attributes
      *
      */
-    public function addItem($sku, $title, $qty, $price, $weight = 0, $length = null, $width = null, $depth = null, $location = null, $tariffcode = null)
-    {
+    public function addItem(
+        $sku,
+        $title,
+        $qty,
+        $price,
+        $weight = 0,
+        $length = null,
+        $width = null,
+        $depth = null,
+        $location = null,
+        $tariffcode = null,
+        $originCountryCode = null
+    ) {
         $parcelAttributes = $this->getParcelAttributes();
 
         if (empty($parcelAttributes)) {
@@ -688,6 +700,7 @@ class Order extends \Magento\Framework\Model\AbstractModel implements OrderInter
             'weight' => (float) ($weight == 0 ? 0.2 : $weight),
             'location' => $location,
             'tariff_code' => $tariffcode,
+            'origin_country_code' => $originCountryCode,
         ];
 
         // for dimensions, ensure the item has values for all dimensions
